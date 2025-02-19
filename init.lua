@@ -103,11 +103,11 @@ vim.g.copilot_no_tab_map = true
 
 -- Remap Copilot's accept action to <C-l> in insert mode
 vim.api.nvim_set_keymap("i", "<C-l>", 'copilot#Accept("<CR>")', { expr = true, silent = true })
-vim.api.nvim_set_keymap("i", "<C-BS>", 'copilot#Accept("<CR>")', { expr = true, silent = true })
-
+vim.api.nvim_set_keymap("n", "<leader>a", ":lua print(vim.fn.expand('%:p'))<CR>", { noremap = true, silent = true })
+vim.keymap.set("n", "<leader>gp", ":GitSigns preview_hunk<CR>", {})
 vim.api.nvim_set_keymap("n", "<leader>a", ":lua print(vim.fn.expand('%:p'))<CR>", { noremap = true, silent = true })
 
--- Function to check for a virtual environment and set python4_host_prog
+-- Function to set the Python environment for DAP
 local function set_python_env()
   local cwd = vim.fn.getcwd()
   local venv_paths = {
@@ -209,3 +209,34 @@ vim.api.nvim_create_autocmd("VimLeavePre", {
 })
 
 vim.api.nvim_set_keymap("n", "<leader>fg", ":Telescope live_grep<CR>", { noremap = true, silent = true })
+vim.api.nvim_set_keymap("n", "<C-a>", "ggVG", { noremap = true, silent = true })
+
+-- Function to prompt for search and replace, then run the substitution command
+local function search_replace_prompt()
+  vim.ui.input({ prompt = "Enter word to search: " }, function(search)
+    if not search or search == "" then
+      print "Search term is empty."
+      return
+    end
+    vim.ui.input({ prompt = "Enter replacement word: " }, function(replacement)
+      if replacement == nil then
+        print "Replacement term is empty."
+        return
+      end
+      -- Escape any special characters in the input
+      local escaped_search = vim.fn.escape(search, "/")
+      local escaped_replacement = vim.fn.escape(replacement, "/")
+      -- Build and execute the substitution command with word boundaries
+      local cmd = string.format("%%s/\\<%s\\>/%s/g", escaped_search, escaped_replacement)
+      vim.cmd(cmd)
+      print(string.format("Replaced '%s' with '%s' in the entire file.", search, replacement))
+    end)
+  end)
+end
+
+-- Create a user command so you can call it via :SearchReplace
+vim.api.nvim_create_user_command("SearchReplace", search_replace_prompt, {})
+
+-- Optionally, map it to a key (e.g., <leader>sr)
+vim.keymap.set("n", "<leader>sr", search_replace_prompt, { desc = "Search and Replace" })
+vim.keymap.set("n", "<F4>", require("dap.ui.widgets").hover, { silent = true })
