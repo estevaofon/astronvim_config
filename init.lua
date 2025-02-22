@@ -105,7 +105,6 @@ vim.g.copilot_no_tab_map = true
 vim.api.nvim_set_keymap("i", "<C-l>", 'copilot#Accept("<CR>")', { expr = true, silent = true })
 vim.api.nvim_set_keymap("n", "<leader>a", ":lua print(vim.fn.expand('%:p'))<CR>", { noremap = true, silent = true })
 vim.keymap.set("n", "<leader>gp", ":GitSigns preview_hunk<CR>", {})
-vim.api.nvim_set_keymap("n", "<leader>a", ":lua print(vim.fn.expand('%:p'))<CR>", { noremap = true, silent = true })
 
 -- Function to set the Python environment for DAP
 local function set_python_env()
@@ -209,6 +208,7 @@ vim.api.nvim_create_autocmd("VimLeavePre", {
 })
 
 vim.api.nvim_set_keymap("n", "<leader>fg", ":Telescope live_grep<CR>", { noremap = true, silent = true })
+vim.api.nvim_set_keymap("n", "<leader>lg", ":Telescope live_grep<CR>", { noremap = true, silent = true })
 vim.api.nvim_set_keymap("n", "<C-a>", "ggVG", { noremap = true, silent = true })
 
 -- Function to prompt for search and replace, then run the substitution command
@@ -240,3 +240,45 @@ vim.api.nvim_create_user_command("SearchReplace", search_replace_prompt, {})
 -- Optionally, map it to a key (e.g., <leader>sr)
 vim.keymap.set("n", "<leader>sr", search_replace_prompt, { desc = "Search and Replace" })
 vim.keymap.set("n", "<F4>", require("dap.ui.widgets").hover, { silent = true })
+
+local dapui = require "dapui"
+dapui.setup {
+  auto_open = true, -- Automatically open the UI when debugging starts
+  auto_close = false, -- Keep the UI open after the debug session ends
+}
+
+local dap = require "dap"
+-- Disable any default auto-close listeners added by dap-ui:
+dap.listeners.before.event_terminated["dapui_config"] = function() end
+dap.listeners.before.event_exited["dapui_config"] = function() end
+
+-- vim.keymap.set("n", "<leader>dq", function() require("dapui").close() end, { desc = "Close all DAP windows" })
+
+-- Save the current buffer when starting the DAP session
+dap.listeners.before.event_initialized["save_buffer"] = function(session)
+  vim.g.last_dap_buffer = vim.api.nvim_get_current_buf()
+end
+
+-- Create a key mapping that closes the DAP UI and returns to the original buffer
+vim.keymap.set("n", "<leader>dq", function()
+  dapui.close() -- close all DAP windows
+  if vim.g.last_dap_buffer then
+    vim.api.nvim_set_current_buf(vim.g.last_dap_buffer)
+  else
+    print "No original file recorded."
+  end
+end, { desc = "Return to file where DAP was issued" })
+
+vim.keymap.set(
+  "n",
+  "<leader>cn",
+  function() require("notify").dismiss { silent = true, pending = true } end,
+  { desc = "Dismiss all notifications" }
+)
+
+-- In visual mode: Comment selected lines
+-- vim.api.nvim_set_keymap("v", "<leader>c", ":s/^/# /<CR>", { noremap = true, silent = true })
+-- vim.keymap.set("x", "<leader>c", ":s/^\\(\\s*\\)/\\1# /<CR>", { silent = true })
+vim.keymap.set({ "n", "x" }, "<leader>c", ":s/^\\(\\s*\\)/\\1# /<CR>", { silent = true })
+vim.keymap.del("n", "<C-q>")
+vim.api.nvim_set_keymap("n", "<C-q>", "<C-v>", { noremap = true, silent = true })
